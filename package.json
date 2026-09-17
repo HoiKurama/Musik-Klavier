@@ -1,0 +1,25 @@
+{
+  "name": "klavier-uebung",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite --host 127.0.0.1 --port 5173 --strictPort --open",
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:browser": "node scripts/browser-test.mjs"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "opensheetmusicdisplay": "^1.9.2",
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vitest": "^3.2.4"
+  }
+}
