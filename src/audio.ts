@@ -6,9 +6,11 @@ export class PianoAudio {
   private keyboard?: Tone.Sampler;
   private music?: Tone.Sampler;
   private gain = new Tone.Gain(0.65).toDestination();
+  private meter = new Tone.Meter({ normalRange:true, smoothing:0.1 });
   private loading?: Promise<void>;
   private scheduled = new Set<number>();
   ready = false;
+  constructor() { this.gain.connect(this.meter); }
   async unlock(): Promise<void> {
     Tone.getContext().lookAhead = 0.02;
     await Tone.start();
@@ -35,7 +37,6 @@ export class PianoAudio {
   update(score: Score, settings: Settings, beat: number, loopEnd: number, fresh: boolean): void {
     if (!this.ready) return;
     if (fresh) this.stop();
-    const beginning = !this.music;
     this.music ??= this.sampler();
     const now = Tone.now();
     const horizon = beat + 0.08 * settings.bpm / 60;
@@ -48,5 +49,5 @@ export class PianoAudio {
       this.scheduled.add(note.id);
     }
   }
-  get diagnostics(): { ready: boolean; buffers: number; context: string } { return { ready: this.ready, buffers: Object.keys(this.buffers).length, context: Tone.getContext().state }; }
+  get diagnostics(): { ready: boolean; buffers: number; context: string; level:number } { const level=this.meter.getValue();return { ready: this.ready, buffers: Object.keys(this.buffers).length, context: Tone.getContext().state, level:Array.isArray(level)?Math.max(...level):level }; }
 }

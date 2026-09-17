@@ -9,7 +9,8 @@
     "check": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "test:browser": "node scripts/browser-test.mjs"
+    "test:browser": "node scripts/browser-test.mjs",
+    "test:production": "node scripts/production-smoke.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.2",

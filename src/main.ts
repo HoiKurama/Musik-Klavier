@@ -6,6 +6,8 @@ import { PianoAudio } from './audio';
 import { KEY_BINDINGS, NoteInput } from './input';
 import { noteName, type Settings } from './types';
 import { installHandControls } from './hands';
+import { installMidiControls } from './midi';
+import { LocalProgress } from './storage';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header class="topbar"><a class="brand" href="/" aria-label="Klavierzeit Startseite"><span class="brand-icon">♫</span> Klavierzeit</a><span class="local-badge"><span></span> Lokal · ohne Konto</span></header>
@@ -41,6 +43,7 @@ let view: ScoreView | undefined;
 let engine: PracticeEngine | undefined;
 let busy = false;
 let audioPending = false;
+let playRequest = 0;
 let importGeneration = 0;
 let lastTime = performance.now();
 let lastRevision = -1;
@@ -49,6 +52,7 @@ let wrongMidi = -1;
 let wrongUntil = 0;
 let extensionChange: () => void = () => {};
 let extensionLoaded: () => Promise<void> = async () => {};
+let localProgress: LocalProgress | undefined;
 
 export function message(text: string, error = false): void { element('message').textContent = text; element('message').classList.toggle('error', error); }
 async function unlock(): Promise<void> {
@@ -110,7 +114,7 @@ input.onPress = (midi, velocity) => {
 };
 input.onRelease = midi => { audio.release(midi); render(); };
 
-function stopSound(): void { audio.stop(); input.clear(); audio.releaseKeyboard(); }
+function stopSound(): void { playRequest++; if(engine?.playing){engine.playing=false;engine.revision++;} audio.stop(); input.clear(); audio.releaseKeyboard(); }
 export function configure(next: Partial<Settings>): void { if (!engine) return; stopSound(); engine.configure(next); extensionChange(); render(); }
 function fillMeasures(): void {
   if (!engine) return;
@@ -122,7 +126,7 @@ function fillMeasures(): void {
 }
 export async function loadXML(xml: string, generation = ++importGeneration): Promise<void> {
   if (generation !== importGeneration) return;
-  busy = true; render(); message('Noten werden geladen …');
+  busy = true; stopSound(); render(); message('Noten werden geladen …');
   try {
     const nextView = await ScoreView.load(xml, element('score'));
     if (generation !== importGeneration) { nextView.dispose(); return; }
@@ -143,28 +147,29 @@ export async function loadXML(xml: string, generation = ++importGeneration): Pro
 async function openFile(file?: File): Promise<void> {
   if (!file) return;
   const generation = ++importGeneration;
-  busy = true; render(); message('Datei wird gelesen …');
+  busy = true; stopSound(); render(); message('Datei wird gelesen …');
   try { const bytes = new Uint8Array(await file.arrayBuffer()); if (generation === importGeneration) await loadXML(decodeMusicXML(bytes), generation); }
   catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Datei konnte nicht gelesen werden.', true); }
   finally { if (generation === importGeneration) { busy = false; render(); } }
 }
 element<HTMLInputElement>('file').addEventListener('change', event => { const field = event.target as HTMLInputElement; void openFile(field.files?.[0]); field.value = ''; });
 async function example(): Promise<void> { const generation = ++importGeneration; busy = true; render(); try { const response = await fetch('/example.musicxml'); if (!response.ok) throw new Error('Das Beispielstück fehlt.'); await loadXML(await response.text(), generation); } catch (error) { if (generation === importGeneration) message(String(error), true); } finally { if (generation === importGeneration) { busy = false; render(); } } }
-element('example').addEventListener('click', () => void example());
+element('example').addEventListener('click', () => { stopSound(); void example(); });
 const dropzone = element('dropzone');
 dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
 dropzone.addEventListener('drop', event => { event.preventDefault(); dropzone.classList.remove('dragging'); void openFile(event.dataTransfer?.files[0]); });
 document.addEventListener('dragover', event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); });
 document.addEventListener('drop', event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); });
-element('listen').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('listen'); render(); });
-element('step').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('step'); message('Spiele die markierten Töne. Akkorde kannst du auch Ton für Ton eingeben.'); render(); });
+element('listen').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('listen'); extensionChange(); render(); });
+element('step').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('step'); extensionChange(); message('Spiele die markierten Töne. Akkorde kannst du auch Ton für Ton eingeben.'); render(); });
 element('play').addEventListener('click', () => {
   if (!engine || busy) return;
   if (engine.mode === 'step') { stopSound(); engine.reset(); render(); return; }
   if (engine.playing) { engine.toggle(); audio.stop(); render(); return; }
   const currentEngine = engine;
-  void unlock().then(() => { if (engine === currentEngine && !busy && engine.mode === 'listen' && !engine.playing) { engine.toggle(); lastTime = performance.now(); render(); } }).catch(() => {});
+  const request=++playRequest;
+  void unlock().then(() => { if (request===playRequest && engine === currentEngine && !busy && engine.mode === 'listen' && !engine.playing) { engine.toggle(); lastTime = performance.now(); render(); } }).catch(() => {});
 });
 element('reset').addEventListener('click', () => { if (engine) { stopSound(); engine.reset(); render(); } });
 element<HTMLInputElement>('tempo').addEventListener('input', event => { if (!engine) return; engine.settings.bpm = Number((event.target as HTMLInputElement).value); engine.revision++; extensionChange(); render(); });
@@ -187,6 +192,11 @@ export function render(): void {
   element('mode-hint').textContent = isStep ? 'Die Noten warten auf dich. Akkorde gehen auch nacheinander.' : 'Noten, Klang und Tastatur laufen gemeinsam.';
   element('play').textContent = isStep ? '↺ Neu üben' : engine.playing ? 'Ⅱ Pause' : engine.finished ? '▶ Noch einmal' : engine.beat > engine.bounds[0] ? '▶ Fortsetzen' : '▶ Abspielen';
   element('bpm').textContent = `${engine.settings.bpm} BPM`;
+  element<HTMLInputElement>('tempo').value = String(engine.settings.bpm);
+  element<HTMLInputElement>('loop').checked = engine.settings.loop;
+  element<HTMLSelectElement>('from').value = String(engine.settings.from);
+  element<HTMLSelectElement>('to').value = String(engine.settings.to);
+  for (const control of document.querySelectorAll<HTMLButtonElement|HTMLSelectElement>('[data-hand], #right-staff, #left-staff')) control.disabled=disabled;
   const measure = Math.max(0, engine.measureIndex);
   element('position').textContent = `Takt ${engine.score.measures[measure].label} / ${engine.score.measures.at(-1)!.label}`;
   element('target').textContent = isStep ? engine.finished ? 'Geschafft! Alle Schritte abgeschlossen.' : engine.expected.length ? `Gesucht: ${engine.expected.filter(n => !engine!.collected.has(n)).map(noteName).join(' · ')} · Schritt ${engine.stepIndex + 1}/${engine.steps.length}` : 'Für diese Auswahl gibt es keine Übeschritte.' : engine.finished ? 'Stück beendet' : engine.playing ? 'Hör zu und folge den Tönen' : 'Bereit zum Zuhören';
@@ -216,10 +226,12 @@ function frame(now: number): void {
   }
   requestAnimationFrame(frame);
 }
-export const app = { get engine() { return engine; }, get view() { return view; }, input, audio, get busy() { return busy; }, configure, render, message, get hooks() { return { change: extensionChange, loaded: extensionLoaded }; }, set hooks(value: { change: () => void; loaded: () => Promise<void> }) { extensionChange = value.change; extensionLoaded = value.loaded; } };
+export const app = { get engine() { return engine; }, get view() { return view; }, input, audio, get busy() { return busy; }, get progress() { return localProgress; }, configure, render, message };
 const handControls = installHandControls(element('extensions'), () => engine, configure);
-extensionLoaded = async () => { handControls.loaded(); };
-extensionChange = () => handControls.sync();
+installMidiControls(element('extensions'), input);
+localProgress = new LocalProgress(element('extensions'),()=>engine,()=>busy,settings=>configure(settings));
+extensionLoaded = async () => { handControls.loaded(); void localProgress!.loaded(); };
+extensionChange = () => { handControls.sync(); localProgress?.change(); };
 // Expose diagnostics only on the local development server, for integration checks.
 if (import.meta.env.DEV) (window as unknown as { __practice: typeof app }).__practice = app;
 void example(); requestAnimationFrame(frame);

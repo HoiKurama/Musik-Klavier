@@ -8,6 +8,8 @@ Lokale Browser-App zum Üben von Klaviernoten. Ohne Konto, KI-API oder laufende 
 2. Die App öffnet sich unter **http://127.0.0.1:5173**. Das Beispielstück ist sofort geladen.
 3. Zum Beenden das Startfenster schließen. Ist Port 5173 belegt, die andere Instanz beenden.
 
+Läuft Klavierzeit bereits, öffnet ein weiterer Aufruf von Start.cmd die vorhandene App und startet keinen zweiten Server.
+
 Alternativ im Projektordner: `npm.cmd ci`, dann `npm.cmd start`. Nach der Installation funktioniert die normale Nutzung offline; Noten und Klaviersamples werden lokal geladen. `npm.cmd run dev` startet ohne automatisch geöffneten Browser.
 
 ## Üben
@@ -17,6 +19,10 @@ Alternativ im Projektordner: `npm.cmd ci`, dann `npm.cmd start`. Nach der Instal
 - **Computertastatur:** `A W S E D F T G Z H U J K` spielt C bis zum nächsten C. Die aktuelle Oktave steht über der Klaviertastatur; − / ＋ wechseln die Belegung. Töne auch per Maus oder Touch eingeben. Wiederholte Töne benötigen einen neuen Anschlag.
 - **Takte wiederholen:** Von/Bis auswählen und Wiederholung aktivieren. Start- und Endtakt gehören dazu.
 - **Hände:** Beide, Rechts oder Links wählen. Unter „Notensysteme zuordnen“ bei Bedarf die Systeme ändern. Die gesamte Partitur bleibt sichtbar.
+- **Digitalpiano:** In Google Chrome oder Microsoft Edge „Digitalpiano verbinden“ wählen und den Browserzugriff erlauben. Gerät per USB verbinden, bei mehreren Eingängen das passende Gerät auswählen. MIDI wird nur empfangen; Pedal wird nicht ausgewertet. Bei fehlender Unterstützung weiterhin Bildschirm oder Computertastatur verwenden.
+- **Fortschritt:** Geschaffte Einsätze, falsche Töne und Übezeit werden je Stück und Hand in IndexedDB gespeichert. Wiederholungen desselben Einsatzes erhöhen die Anzahl nicht. Tempo, Handwahl, Zuordnung und Taktbereich werden beim erneuten Laden derselben Datei wiederhergestellt. Für importierte Stücke die Datei nach einem Neustart erneut öffnen. Speicherung erfolgt spätestens alle wenigen Sekunden; Speicherfehler lassen das Üben weiterhin zu. Im Hintergrund pausiert die Wiedergabe. Im Schrittmodus pausiert die Übezeit nach 30 Sekunden ohne Eingabe.
+
+Fortschritt gehört zu diesem Browser und zur Adresse `http://127.0.0.1:5173`. Ein anderer Browser, Privatmodus oder Löschen der Browserdaten hat einen anderen beziehungsweise leeren Speicher. „Fortschritt dieses Stücks löschen“ entfernt nach Bestätigung nur die Statistik dieses Stücks für alle Hände; die Partitur bleibt erhalten.
 - **MusicXML öffnen:** `.musicxml`, `.xml` oder komprimiertes `.mxl` aus einem externen Notenscanner verwenden. Es wird eine `score-partwise`-Klavierpartitur benötigt. Maximal 15 MB Dateigröße, 40 MB entpacktes Archiv. Ein fehlgeschlagener Import behält die bisherige Partitur.
 
 ## Grenzen
@@ -29,7 +35,10 @@ Keine eigene Foto-/PDF-Erkennung. Scannerfehler werden nicht automatisch korrigi
 - `npm.cmd test`: gezielte Logiktests.
 - `npm.cmd run build`: Produktionsbuild in `dist/`.
 - `npm.cmd run test:browser`: Integrationstest in installiertem Google Chrome; vorher `npm.cmd run dev` starten. Screenshots liegen in `test-results/`.
+- `npm.cmd run test:production`: eigenständiger Test des gebauten `dist/` auf localhost:5174; externe Netzwerkverbindungen werden gesperrt. Vorher Build ausführen. Tests verwenden isolierte Browserkontexte und simulieren MIDI; sie greifen nicht auf persönliche Browserdaten zu.
 
-**Bestätigt am 17.09.2026:** neun Logiktests bestanden; Typprüfung und Produktionsbuild erfolgreich. Echter Chrome-Browser: achtaktiges Beispiel komplett im Schrittmodus, korrekte C4-Tonhöhe und Haltebogendauer, Cursorfolge, Akkordteilnoten, falsche Eingaben, gehaltene Tasten, Pause/Fortsetzen, Taktloop, XML/MXL und fehlerhafter Import, Maus/Tastatur/Touch, Desktop und 390 px breite Ansicht. Alle 30 Samples dekodieren; Audiosignal im C4-Sample nachgewiesen. Desktopoberfläche visuell angesehen. Kein subjektiver Hörtest oder Test mit physischem Digitalpiano durchgeführt.
+**Bestätigt am 17.09.2026:** elf Logiktests bestanden; Typprüfung und Produktionsbuild erfolgreich. Chrome-Browser: gesamtes Beispiel im Schrittmodus, C4/MIDI 60, Haltebögen, Cursorfolge, Akkorde/falsche Eingaben/gehaltene Tasten, Pause/Fortsetzen und Taktloop. XML/MXL, fehlerhafter Import, Drag-and-drop und gleichzeitige Importe geprüft; zusätzliche Partitur mit Auftakt, Vorzeichen, Punktierung, Triolen, mehreren Stimmen sowie Takt-/divisions-Wechsel. Maus/Tastatur/Touch, Handfilter und Zuordnung, simulierte MIDI-Eingaben/Note-off/Trennen, IndexedDB/Neuladen/Löschen und Speicherfehler geprüft. Alle 30 Samples dekodieren; Signal am tatsächlichen Audioausgang nachgewiesen. Zurücksetzen bricht auch einen noch ladenden Wiedergabestart ab. Desktop und 390 px breite Ansicht visuell angesehen. Kein subjektiver Hörtest oder Test mit physischem Digitalpiano durchgeführt.
+
+Produktionsbuild zusätzlich auf localhost:5174 bei gesperrtem externem Netzwerk geprüft: Beispiel, Partitur, Schrittmodus, lokale Wiedergabe, Pause, Lizenzdatei und korrigierte Mobilansicht funktionieren; keine externen Anfragen. Start.cmd wurde sowohl bei gestopptem als auch bei bereits laufendem Server erfolgreich ausgeführt. Abhängigkeiten wurden erfolgreich mit `npm.cmd install` installiert. Die Start.cmd-Zweige für fehlende Abhängigkeiten (`npm ci`) und fehlendes/zu altes Node.js wurden nicht separat durchlaufen.
 
 Fortschritt des Projekts: [PROJECT_STATE.md](PROJECT_STATE.md). Klangherkunft und Lizenzen: [THIRD_PARTY_NOTICES.md](public/THIRD_PARTY_NOTICES.md).
