@@ -10,6 +10,7 @@ export class PianoAudio {
   private scheduled = new Set<number>();
   ready = false;
   async unlock(): Promise<void> {
+    Tone.getContext().lookAhead = 0.02;
     await Tone.start();
     if (this.ready) return;
     if (!this.loading) this.loading = this.load().catch(error => { this.loading = undefined; throw error; });
@@ -41,7 +42,6 @@ export class PianoAudio {
     for (const note of score.notes) {
       if (!selected(note, settings) || this.scheduled.has(note.id) || note.start >= loopEnd - 1e-7) continue;
       if (note.end <= beat || note.start > horizon) continue;
-      if (note.start < beat - 0.001 && !beginning) continue;
       const time = now + Math.max(0, note.start - beat) * 60 / settings.bpm;
       const duration = (Math.min(note.end, loopEnd) - Math.max(note.start, beat)) * 60 / settings.bpm;
       if (duration > 0) this.music.triggerAttackRelease(Tone.Frequency(note.midi, 'midi').toFrequency(), duration, time, 0.65);

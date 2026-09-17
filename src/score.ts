@@ -61,7 +61,7 @@ export class ScoreView {
     this.element.style.cssText = ''; host.replaceChildren(this.element);
     const cursor = this.osmd.cursor; cursor.reset();
     let guard = 0;
-    while (!cursor.Iterator.EndReached && guard++ < 20000) { this.cursorPositions.push(cursor.Iterator.CurrentSourceTimestamp.RealValue * 4); cursor.next(); }
+    while (!cursor.Iterator.EndReached && guard++ < 20000) { this.cursorPositions.push(cursor.Iterator.CurrentSourceTimestamp.RealValue * 4); cursor.Iterator.moveToNext(); }
     cursor.reset(); this.cursorIndex = 0; cursor.show();
   }
   resize(zoom = 1): void { this.osmd.Zoom = zoom; this.osmd.render(); this.osmd.cursor.reset(); this.cursorIndex = 0; this.osmd.cursor.show(); }

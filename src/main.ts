@@ -5,6 +5,7 @@ import { PracticeEngine } from './engine';
 import { PianoAudio } from './audio';
 import { KEY_BINDINGS, NoteInput } from './input';
 import { noteName, type Settings } from './types';
+import { installHandControls } from './hands';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header class="topbar"><a class="brand" href="/" aria-label="Klavierzeit Startseite"><span class="brand-icon">♫</span> Klavierzeit</a><span class="local-badge"><span></span> Lokal · ohne Konto</span></header>
@@ -90,6 +91,12 @@ function reveal(midi: number): void {
   const scroll = element('keyboard-scroll'); const left = parseFloat(key.style.left);
   if (left < scroll.scrollLeft + 20 || left > scroll.scrollLeft + scroll.clientWidth - 60) scroll.scrollLeft = Math.max(0, left - scroll.clientWidth / 3);
 }
+function focusRange(midis: number[]): void {
+  const positions = midis.map(m => parseFloat(pianoKeys.get(m)?.style.left ?? '0'));
+  const scroll = element('keyboard-scroll');
+  const low = Math.min(...positions), high = Math.max(...positions) + 32;
+  scroll.scrollLeft = Math.max(0, high - low < scroll.clientWidth ? (low + high - scroll.clientWidth) / 2 : low - 24);
+}
 for (const [id, delta] of [['octave-down', -12], ['octave-up', 12]] as const) element(id).addEventListener('click', () => { input.clear(); input.base = Math.max(24, Math.min(96, input.base + delta)); bindings(); reveal(input.base); });
 bindings(); input.bindKeyboard();
 input.onPress = (midi, velocity) => {
@@ -113,8 +120,8 @@ function fillMeasures(): void {
   }
   element<HTMLSelectElement>('to').value = String(engine.settings.to);
 }
-export async function loadXML(xml: string): Promise<void> {
-  const generation = ++importGeneration;
+export async function loadXML(xml: string, generation = ++importGeneration): Promise<void> {
+  if (generation !== importGeneration) return;
   busy = true; render(); message('Noten werden geladen …');
   try {
     const nextView = await ScoreView.load(xml, element('score'));
@@ -129,18 +136,27 @@ export async function loadXML(xml: string): Promise<void> {
     input.base = Math.max(24, Math.min(96, Math.floor(Math.max(...view.score.notes.filter(n => n.staff === 0).map(n => n.midi), 60) / 12) * 12 - 12));
     bindings(); lastRevision = -1; lastVisual = ''; await extensionLoaded();
     message(`${view.score.measures.length} Takte bereit. Wähle „Zuhören“ oder „Schrittmodus“.`);
-    reveal(Math.min(...view.score.notes.map(n => n.midi)));
+    focusRange(view.score.notes.map(n => n.midi));
   } catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Die Noten konnten nicht geladen werden.', true); }
   finally { if (generation === importGeneration) { busy = false; render(); } }
 }
 async function openFile(file?: File): Promise<void> {
   if (!file) return;
-  try { await loadXML(decodeMusicXML(new Uint8Array(await file.arrayBuffer()))); }
-  catch (error) { message(error instanceof Error ? error.message : 'Datei konnte nicht gelesen werden.', true); }
+  const generation = ++importGeneration;
+  busy = true; render(); message('Datei wird gelesen …');
+  try { const bytes = new Uint8Array(await file.arrayBuffer()); if (generation === importGeneration) await loadXML(decodeMusicXML(bytes), generation); }
+  catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Datei konnte nicht gelesen werden.', true); }
+  finally { if (generation === importGeneration) { busy = false; render(); } }
 }
 element<HTMLInputElement>('file').addEventListener('change', event => { const field = event.target as HTMLInputElement; void openFile(field.files?.[0]); field.value = ''; });
-async function example(): Promise<void> { try { const response = await fetch('/example.musicxml'); if (!response.ok) throw new Error('Das Beispielstück fehlt.'); await loadXML(await response.text()); } catch (error) { message(String(error), true); } }
+async function example(): Promise<void> { const generation = ++importGeneration; busy = true; render(); try { const response = await fetch('/example.musicxml'); if (!response.ok) throw new Error('Das Beispielstück fehlt.'); await loadXML(await response.text(), generation); } catch (error) { if (generation === importGeneration) message(String(error), true); } finally { if (generation === importGeneration) { busy = false; render(); } } }
 element('example').addEventListener('click', () => void example());
+const dropzone = element('dropzone');
+dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+dropzone.addEventListener('drop', event => { event.preventDefault(); dropzone.classList.remove('dragging'); void openFile(event.dataTransfer?.files[0]); });
+document.addEventListener('dragover', event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); });
+document.addEventListener('drop', event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); });
 element('listen').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('listen'); render(); });
 element('step').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('step'); message('Spiele die markierten Töne. Akkorde kannst du auch Ton für Ton eingeben.'); render(); });
 element('play').addEventListener('click', () => {
@@ -188,7 +204,7 @@ export function render(): void {
   }
   const visual = `${measure}:${engine.score.steps.findLastIndex(s => s.beat <= engine!.beat + 1e-7)}:${element<HTMLSelectElement>('zoom').value}`;
   if (visual !== lastVisual) { view.move(engine.beat); lastVisual = visual; }
-  if (isStep && engine.revision !== lastRevision && expected.length) reveal(Math.min(...expected));
+  if (isStep && engine.revision !== lastRevision && expected.length) focusRange(expected);
 }
 function frame(now: number): void {
   const seconds = Math.min(0.25, (now - lastTime) / 1000); lastTime = now;
@@ -201,6 +217,9 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 export const app = { get engine() { return engine; }, get view() { return view; }, input, audio, get busy() { return busy; }, configure, render, message, get hooks() { return { change: extensionChange, loaded: extensionLoaded }; }, set hooks(value: { change: () => void; loaded: () => Promise<void> }) { extensionChange = value.change; extensionLoaded = value.loaded; } };
+const handControls = installHandControls(element('extensions'), () => engine, configure);
+extensionLoaded = async () => { handControls.loaded(); };
+extensionChange = () => handControls.sync();
 // Expose diagnostics only on the local development server, for integration checks.
 if (import.meta.env.DEV) (window as unknown as { __practice: typeof app }).__practice = app;
 void example(); requestAnimationFrame(frame);

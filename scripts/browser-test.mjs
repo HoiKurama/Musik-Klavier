@@ -16,6 +16,7 @@ try {
   assert.equal(s.measures.at(-1).end,32); assert.equal(s.notes.find(n=>n.start===26 && n.midi===60).end,32,'Haltebogen über Taktgrenze');
   assert.equal(await page.evaluate(()=>window.__practice.view.osmd.cursor.Iterator.CurrentSourceTimestamp.RealValue*4),0,'Cursor am ersten Einsatz');
   assert.equal(await page.locator('#score svg').count()>0,true);
+  assert.equal(await page.locator('#warnings').isVisible(),false,'Doppelte Tempoangabe in einem direction-Element ist ein Ereignis');
   await page.screenshot({path:'test-results/desktop.png',fullPage:true});
   await page.locator('#step').click();
   assert.deepEqual((await state()).expected,[60,48]);
@@ -46,6 +47,19 @@ try {
   const example=await readFile('public/example.musicxml');
   const mxl=zipSync({'META-INF/container.xml':strToU8('<container><rootfiles><rootfile full-path="score.musicxml" media-type="application/vnd.recordare.musicxml+xml"/></rootfiles></container>'),'score.musicxml':example});
   await page.locator('#file').setInputFiles({name:'beispiel.mxl',mimeType:'application/vnd.recordare.musicxml',buffer:Buffer.from(mxl)}); await ready(); assert.equal((await state()).measures.length,8);
+  await page.locator('#file').setInputFiles('tests/fixtures/robust.musicxml'); await ready(); s=await state();
+  assert.deepEqual(s.measures.map(m=>[m.start,m.end]),[[0,1],[1,5],[5,8]],'Auftakt und wechselnde Taktart');
+  assert.equal(s.notes.find(n=>n.midi===66).end,2.5,'Punktierung und Vorzeichen');
+  assert.ok(Math.abs(s.notes.find(n=>n.start===2.5).end-17/6)<1e-7,'Triolendauer');
+  assert.equal(s.notes.find(n=>n.midi===48).end,8,'Gebundener Ton über Takt- und divisions-Wechsel');
+  assert.equal(s.notes.filter(n=>n.start===1).length,3,'Mehrere Stimmen und Notensysteme');
+  await page.locator('#zoom').selectOption('1.25'); assert.equal(await page.locator('#score svg').count()>0,true);
+  await page.locator('#example').click(); await ready();
+  await page.locator('#step').click(); await page.locator('[data-hand="right"]').click(); assert.deepEqual((await state()).expected,[60]);
+  await page.locator('[data-hand="left"]').click(); assert.deepEqual((await state()).expected,[48]);
+  await page.locator('.mapping summary').click(); await page.locator('#left-staff').selectOption('0'); assert.deepEqual((await state()).expected,[60]);
+  await page.locator('#left-staff').selectOption('1'); await page.locator('[data-hand="both"]').click(); assert.deepEqual((await state()).expected,[60,48]);
+  await page.locator('#listen').click();
   await page.setViewportSize({width:390,height:844}); await page.waitForTimeout(250); await page.screenshot({path:'test-results/mobile.png',fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Keine horizontale Seitenausdehnung');
   const touchContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const touchPage=await touchContext.newPage();await touchPage.goto('http://127.0.0.1:5173');await touchPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await touchPage.locator('#step').tap();await touchPage.locator('[data-midi="48"]').tap();await touchPage.locator('[data-midi="60"]').tap();assert.equal(await touchPage.evaluate(()=>window.__practice.engine.beat),1);await touchContext.close();

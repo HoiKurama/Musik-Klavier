@@ -41,7 +41,8 @@ export function importWarnings(doc: Document): string[] {
   if (doc.querySelector('repeat, ending, segno, coda, sound[dacapo], sound[dalsegno], sound[tocoda], sound[fine]')) warnings.push('Wiederholungszeichen und Sprünge: Die App spielt die Takte in notierter Reihenfolge. Nutze die Taktwiederholung.');
   if (doc.querySelector('grace, ornament, ornaments, tremolo, arpeggiate')) warnings.push('Verzierungen, Vorschläge, Tremolo und Arpeggien werden angezeigt; abgespielt werden die Haupttöne als normale Einsätze.');
   if (doc.querySelector('pedal, sound[damper-pedal]')) warnings.push('Pedalzeichen werden angezeigt, beim Abspielen aber nicht interpretiert.');
-  if (doc.querySelectorAll('sound[tempo], metronome').length > 1) warnings.push('Die App verwendet ein konstantes Tempo. Weitere Tempoangaben und Rubato werden nicht automatisch ausgeführt.');
+  const tempoEvents = new Set(Array.from(doc.querySelectorAll('sound[tempo], metronome')).map(el => el.closest('direction') ?? el));
+  if (tempoEvents.size > 1) warnings.push('Die App verwendet ein konstantes Tempo. Weitere Tempoangaben und Rubato werden nicht automatisch ausgeführt.');
   if (doc.querySelector('transpose, unpitched')) warnings.push('Transponierende Instrumente und Schlagzeug werden nicht unterstützt. Bitte eine Klavierpartitur exportieren.');
   return warnings;
 }

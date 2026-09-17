@@ -16,6 +16,7 @@ Alternativ im Projektordner: `npm.cmd ci`, dann `npm.cmd start`. Nach der Instal
 - **Schrittmodus:** Die App wartet auf die markierten Töne. Akkorde können Ton für Ton eingegeben werden. Eine falsche Note lässt den Cursor stehen und behält richtige Teilnoten. Rhythmus und Anschlagsdauer werden nicht bewertet.
 - **Computertastatur:** `A W S E D F T G Z H U J K` spielt C bis zum nächsten C. Die aktuelle Oktave steht über der Klaviertastatur; − / ＋ wechseln die Belegung. Töne auch per Maus oder Touch eingeben. Wiederholte Töne benötigen einen neuen Anschlag.
 - **Takte wiederholen:** Von/Bis auswählen und Wiederholung aktivieren. Start- und Endtakt gehören dazu.
+- **Hände:** Beide, Rechts oder Links wählen. Unter „Notensysteme zuordnen“ bei Bedarf die Systeme ändern. Die gesamte Partitur bleibt sichtbar.
 - **MusicXML öffnen:** `.musicxml`, `.xml` oder komprimiertes `.mxl` aus einem externen Notenscanner verwenden. Es wird eine `score-partwise`-Klavierpartitur benötigt. Maximal 15 MB Dateigröße, 40 MB entpacktes Archiv. Ein fehlgeschlagener Import behält die bisherige Partitur.
 
 ## Grenzen
