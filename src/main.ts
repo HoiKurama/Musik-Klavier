@@ -8,23 +8,20 @@ import { noteName, type Settings } from './types';
 import { installHandControls } from './hands';
 import { installMidiControls } from './midi';
 import { LocalProgress } from './storage';
+import { exampleScore } from 'virtual:offline-assets';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <header class="topbar"><a class="brand" href="/" aria-label="Klavierzeit Startseite"><span class="brand-icon">♫</span> Klavierzeit</a><span class="local-badge"><span></span> Lokal · ohne Konto</span></header>
+  <header class="topbar"><a class="brand" href="index.html" aria-label="Klavierzeit Startseite"><span class="brand-icon" aria-hidden="true">♫</span> Klavierzeit</a><div class="header-actions"><span class="local-badge"><span></span> Lokal · ohne Konto</span><button id="example" class="secondary">↺ Beispiel laden</button></div></header>
   <main>
-    <div class="intro"><div><p class="eyebrow">DEIN KLAVIER. DEIN TEMPO.</p><h1>Ein Takt nach dem anderen.</h1><p>Hör zu, finde die Töne und übe in deinem Rhythmus.</p></div><button id="example" class="secondary">↺ Beispiel laden</button></div>
     <div class="workspace">
-      <aside class="controls">
-        <section class="control-section"><h2>Deine Noten</h2><label id="dropzone" class="dropzone"><span class="upload-icon">＋</span><strong>MusicXML öffnen</strong><span>Datei auswählen oder hier ablegen</span><small>.musicxml · .xml · .mxl</small><input id="file" type="file" accept=".musicxml,.xml,.mxl" aria-label="MusicXML-Datei öffnen"></label><p class="hint">Foto oder PDF? Zuerst mit einem Notenscanner als MusicXML exportieren.</p></section>
-        <section class="control-section"><h2>So möchtest du üben</h2><div class="segmented" aria-label="Übemodus"><button id="listen" aria-pressed="true">♫ Zuhören</button><button id="step" aria-pressed="false">♪ Schrittmodus</button></div><p id="mode-hint" class="hint">Noten, Klang und Tastatur laufen gemeinsam.</p>
-          <label class="range-label" for="tempo"><span>Tempo</span><output id="bpm">90 BPM</output></label><input id="tempo" type="range" min="30" max="240" value="90"><div class="range-ends"><span>Langsam</span><span>Schnell</span></div>
-          <label class="range-label volume-label" for="volume"><span>Lautstärke</span></label><input id="volume" type="range" min="0" max="100" value="65">
-        </section>
-        <section class="control-section"><label class="switch-label"><input id="loop" type="checkbox"><strong>Takte wiederholen</strong></label><div class="measure-select"><label>Von<select id="from" aria-label="Erster Takt"></select></label><span>–</span><label>Bis<select id="to" aria-label="Letzter Takt"></select></label></div><p class="hint">Der Start- und Endtakt gehören dazu.</p></section>
-        <div id="extensions"></div>
-      </aside>
       <section class="practice-panel" aria-label="Noten und Übung">
-        <div class="score-heading"><div><p class="eyebrow">AUF DEINEM NOTENPULT</p><h2 id="title">Beispiel wird geladen …</h2></div><label class="zoom-label">Zoom<select id="zoom"><option value="0.75">75 %</option><option value="1" selected>100 %</option><option value="1.25">125 %</option><option value="1.5">150 %</option></select></label></div>
+        <div class="score-heading"><div><p class="eyebrow">DEIN NOTENPULT</p><h1 id="title">Beispiel wird geladen …</h1></div><label class="zoom-label">Zoom<select id="zoom"><option value="0.75">75 %</option><option value="1" selected>100 %</option><option value="1.25">125 %</option><option value="1.5">150 %</option></select></label></div>
+        <div class="practice-settings">
+          <section class="mode-control"><h2>Übemodus</h2><div class="segmented" role="group" aria-label="Übemodus"><button id="listen" aria-pressed="true" aria-describedby="mode-hint">♫ Zuhören</button><button id="step" aria-pressed="false" aria-describedby="mode-hint">♪ Schrittmodus</button></div></section>
+          <div id="hand-controls"></div>
+          <section class="tempo-control"><label class="range-label" for="tempo"><span>Tempo</span><output id="bpm">90 BPM</output></label><input id="tempo" type="range" min="30" max="240" value="90" aria-describedby="tempo-help"><span id="tempo-help" class="sr-only">30 bis 240 Schläge pro Minute</span></section>
+          <p id="mode-hint" class="hint">Noten, Klang und Tastatur laufen gemeinsam.</p>
+        </div>
         <div id="message" role="status" aria-live="polite" class="message">Deine Noten werden vorbereitet.</div>
         <div id="score" class="score-viewport" aria-label="Notenpartitur"></div>
         <div id="warnings" class="warnings" hidden></div>
@@ -32,8 +29,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="progress-track"><div id="progress-bar"></div></div>
         <section class="keyboard-section"><div class="keyboard-heading"><h2>Deine Klaviertastatur</h2><div class="octave-control"><button id="octave-down" aria-label="Computerbelegung eine Oktave tiefer">−</button><span id="octave-label">C4 – C5</span><button id="octave-up" aria-label="Computerbelegung eine Oktave höher">＋</button></div></div><div class="legend"><span><i class="expected"></i>Gesucht</span><span><i class="sounding"></i>Klingt</span><span><i class="pressed"></i>Gespielt</span></div><div id="keyboard-scroll" class="keyboard-scroll"><div id="keyboard" class="keyboard" aria-label="Virtuelle Klaviertastatur"></div></div><p class="keyboard-help">Klicke oder tippe auf die Tasten. Am Computer: <strong>A W S E D F T G Z H U J K</strong>. Mit − / ＋ wechselst du die Oktave.</p></section>
       </section>
+      <aside class="controls" aria-label="Noten und Einstellungen">
+        <section class="control-section"><h2>Deine Noten</h2><label id="dropzone" class="dropzone"><span class="upload-icon" aria-hidden="true">＋</span><strong>MusicXML öffnen</strong><span>Datei wählen oder hier ablegen</span><small>.musicxml · .xml · .mxl</small><input id="file" type="file" accept=".musicxml,.xml,.mxl" aria-label="MusicXML-Datei öffnen"></label><p class="hint">Foto oder PDF? Mit einem Notenscanner als MusicXML exportieren.</p></section>
+        <section class="control-section"><h2>Taktbereich</h2><label class="switch-label"><input id="loop" type="checkbox">Takte wiederholen</label><div class="measure-select"><label>Von<select id="from" aria-label="Erster Takt"></select></label><span aria-hidden="true">–</span><label>Bis<select id="to" aria-label="Letzter Takt"></select></label></div><p class="hint">Start- und Endtakt gehören dazu.</p></section>
+        <section class="control-section"><label class="range-label" for="volume"><span>Lautstärke</span><output id="volume-value">65 %</output></label><input id="volume" type="range" min="0" max="100" value="65"></section>
+        <div id="extensions"></div>
+      </aside>
     </div>
-    <footer>Alles bleibt auf diesem Computer. <a href="/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Klang &amp; Bibliotheken</a></footer>
+    <footer>Alles bleibt auf diesem Computer. <a href="THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Klang &amp; Bibliotheken</a></footer>
   </main>`;
 
 export const element = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -140,7 +143,7 @@ export async function loadXML(xml: string, generation = ++importGeneration): Pro
     input.base = Math.max(24, Math.min(96, Math.floor(Math.max(...view.score.notes.filter(n => n.staff === 0).map(n => n.midi), 60) / 12) * 12 - 12));
     bindings(); lastRevision = -1; lastVisual = ''; await extensionLoaded();
     message(`${view.score.measures.length} Takte bereit. Wähle „Zuhören“ oder „Schrittmodus“.`);
-    focusRange(view.score.notes.map(n => n.midi));
+    focusRange(engine.mode === 'step' ? engine.expected : [input.base, input.base + 12]);
   } catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Die Noten konnten nicht geladen werden.', true); }
   finally { if (generation === importGeneration) { busy = false; render(); } }
 }
@@ -153,7 +156,7 @@ async function openFile(file?: File): Promise<void> {
   finally { if (generation === importGeneration) { busy = false; render(); } }
 }
 element<HTMLInputElement>('file').addEventListener('change', event => { const field = event.target as HTMLInputElement; void openFile(field.files?.[0]); field.value = ''; });
-async function example(): Promise<void> { const generation = ++importGeneration; busy = true; render(); try { const response = await fetch('/example.musicxml'); if (!response.ok) throw new Error('Das Beispielstück fehlt.'); await loadXML(await response.text(), generation); } catch (error) { if (generation === importGeneration) message(String(error), true); } finally { if (generation === importGeneration) { busy = false; render(); } } }
+async function example(): Promise<void> { const generation = ++importGeneration; busy = true; render(); try { await loadXML(exampleScore, generation); } catch (error) { if (generation === importGeneration) message(String(error), true); } finally { if (generation === importGeneration) { busy = false; render(); } } }
 element('example').addEventListener('click', () => { stopSound(); void example(); });
 const dropzone = element('dropzone');
 dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
@@ -173,14 +176,14 @@ element('play').addEventListener('click', () => {
 });
 element('reset').addEventListener('click', () => { if (engine) { stopSound(); engine.reset(); render(); } });
 element<HTMLInputElement>('tempo').addEventListener('input', event => { if (!engine) return; engine.settings.bpm = Number((event.target as HTMLInputElement).value); engine.revision++; extensionChange(); render(); });
-element<HTMLInputElement>('volume').addEventListener('input', event => audio.volume(Number((event.target as HTMLInputElement).value) / 100));
+element<HTMLInputElement>('volume').addEventListener('input', event => { const value = Number((event.target as HTMLInputElement).value); audio.volume(value / 100); element('volume-value').textContent = `${value} %`; });
 element<HTMLInputElement>('loop').addEventListener('change', event => configure({ loop: (event.target as HTMLInputElement).checked }));
 element<HTMLSelectElement>('from').addEventListener('change', event => { const from = Number((event.target as HTMLSelectElement).value); const to = Math.max(from, engine!.settings.to); element<HTMLSelectElement>('to').value = String(to); configure({ from, to }); });
 element<HTMLSelectElement>('to').addEventListener('change', event => { const to = Number((event.target as HTMLSelectElement).value); const from = Math.min(to, engine!.settings.from); element<HTMLSelectElement>('from').value = String(from); configure({ from, to }); });
 element<HTMLSelectElement>('jump').addEventListener('change', event => { if (engine) { stopSound(); engine.seek(Number((event.target as HTMLSelectElement).value)); render(); } });
 element<HTMLSelectElement>('zoom').addEventListener('change', event => { view?.resize(Number((event.target as HTMLSelectElement).value)); lastVisual = ''; render(); });
 let resizeTimer: ReturnType<typeof setTimeout>;
-window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { view?.resize(Number(element<HTMLSelectElement>('zoom').value)); lastVisual = ''; render(); }, 150); });
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { view?.resize(Number(element<HTMLSelectElement>('zoom').value)); lastVisual = ''; focusRange(engine?.mode === 'step' ? engine.expected : [input.base, input.base + 12]); render(); }, 150); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && engine?.playing) { engine.playing = false; engine.revision++; audio.stop(); render(); } lastTime = performance.now(); });
 
 export function render(): void {
@@ -227,7 +230,7 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 export const app = { get engine() { return engine; }, get view() { return view; }, input, audio, get busy() { return busy; }, get progress() { return localProgress; }, configure, render, message };
-const handControls = installHandControls(element('extensions'), () => engine, configure);
+const handControls = installHandControls(element('hand-controls'), element('extensions'), () => engine, configure);
 installMidiControls(element('extensions'), input);
 localProgress = new LocalProgress(element('extensions'),()=>engine,()=>busy,settings=>configure(settings));
 extensionLoaded = async () => { handControls.loaded(); void localProgress!.loaded(); };

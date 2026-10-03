@@ -28,6 +28,12 @@ if not errorlevel 1 (
   start "" "http://127.0.0.1:5173"
   exit /b 0
 )
+node scripts\needs-build.mjs
+if not errorlevel 1 (
+  echo Eigenstaendige Version wird aktualisiert ...
+  call npm.cmd run build
+  if errorlevel 1 echo Hinweis: dist\index.html konnte nicht aktualisiert werden. Die App startet trotzdem.
+)
 echo Klavierzeit startet. Dieses Fenster zum Beenden schliessen.
 call npm.cmd start
 if errorlevel 1 pause

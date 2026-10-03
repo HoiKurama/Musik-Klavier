@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 const root=resolve('dist');
 const mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.mp3':'audio/mpeg','.musicxml':'application/xml','.md':'text/markdown'};
@@ -28,7 +29,10 @@ try{
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.equal(await page.locator('#extensions>.control-section').last().evaluate(el=>getComputedStyle(el).display),'block','Fortschrittsbereich bleibt auf Mobilgeräten lesbar');
+  await page.locator('#progress-settings summary').click();assert.equal(await page.locator('.stats').isVisible(),true,'Fortschritt lässt sich auch mobil aufklappen');
   await page.screenshot({path:'test-results/production-mobile.png',fullPage:true});
   assert.deepEqual(external,[],'Normale Nutzung benötigt keine externe Netzwerkverbindung');assert.deepEqual(missing,[],'Alle App-Assets vorhanden');
-  console.log('Produktionsbuild: Beispiel, Noten, Schrittmodus, lokale Klangwiedergabe, Pause und Lizenzdatei bestanden. Externes Netzwerk gesperrt; keine externen Anfragen.');
+  // Doppelklick auf dist/index.html oder index.html öffnet die App ohne Server (file://).
+  for(const file of ['dist/index.html','index.html']){const local=await browser.newPage();await local.goto(pathToFileURL(resolve(file)).href);await local.waitForFunction(()=>document.querySelector('#play')&&!document.querySelector('#play').disabled);assert.match(local.url(),/\/dist\/index\.html$/,`${file} führt zur eigenständigen Version`);assert.equal(await local.locator('#score svg').count()>0,true,`${file} zeigt die Noten`);await local.locator('#play').click();await local.waitForFunction(()=>document.querySelector('#play').textContent.includes('Pause'));await local.close();}
+  console.log('Produktionsbuild: Beispiel, Noten, Schrittmodus, lokale Klangwiedergabe, Pause und Lizenzdatei bestanden. Externes Netzwerk gesperrt; keine externen Anfragen. Öffnen per Doppelklick (file://) bestanden.');
 }finally{await browser?.close();server.closeAllConnections();await new Promise(done=>server.close(done));}

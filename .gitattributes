@@ -1,0 +1,6 @@
+* text=auto eol=lf
+# cmd.exe needs CRLF line endings for reliable labels and goto.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.mp3 binary
+*.png binary

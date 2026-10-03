@@ -23,6 +23,10 @@ try {
   assert.equal(await page.evaluate(()=>window.__practice.view.osmd.cursor.Iterator.CurrentSourceTimestamp.RealValue*4),0,'Cursor am ersten Einsatz');
   assert.equal(await page.locator('#score svg').count()>0,true);
   assert.equal(await page.locator('#warnings').isVisible(),false,'Doppelte Tempoangabe in einem direction-Element ist ein Ereignis');
+  assert.equal(await page.locator('.practice-panel #step').count(),1,'Übemodus am Notenpult');
+  assert.equal(await page.locator('.practice-panel [data-hand="right"]').count(),1,'Handwahl am Notenpult');
+  assert.equal(await page.locator('#midi-settings').getAttribute('open'),null,'Optionale Einstellungen beginnen eingeklappt');
+  await page.locator('#volume').press('End'); assert.equal(await page.locator('#volume-value').textContent(),'100 %');
   await page.screenshot({path:'test-results/desktop.png',fullPage:true});
   await page.locator('#step').click();
   assert.deepEqual((await state()).expected,[60,48]);
@@ -71,14 +75,23 @@ try {
   await page.locator('.mapping summary').click(); await page.locator('#left-staff').selectOption('0'); assert.deepEqual((await state()).expected,[60]);
   await page.locator('#left-staff').selectOption('1'); await page.locator('[data-hand="both"]').click(); assert.deepEqual((await state()).expected,[60,48]);
   await page.locator('#listen').click();
-  await page.locator('#midi-connect').click(); assert.match(await page.locator('#midi-status').textContent(),/Verbunden: Test-Digitalpiano/);
+  await page.locator('#midi-settings summary').click(); await page.locator('#midi-connect').click(); assert.match(await page.locator('#midi-status').textContent(),/Verbunden: Test-Digitalpiano/);
   await page.locator('#step').click(); await page.evaluate(()=>{window.__midiFake.send(0x92,60,127);window.__midiFake.send(0x93,48,100);}); assert.equal((await state()).beat,1);
   await page.evaluate(()=>{window.__midiFake.send(0x82,60,50);window.__midiFake.send(0x93,48,0);}); assert.deepEqual(await page.evaluate(()=>window.__practice.input.pressed),[]);
   await page.evaluate(()=>{window.__midiFake.send(0x90,62,100);window.__midiFake.send(0x90,62,100);}); assert.equal((await state()).beat,2);
   await page.evaluate(()=>{window.__midiFake.port.state='disconnected';window.__midiFake.access.onstatechange();}); assert.match(await page.locator('#midi-status').textContent(),/Kein MIDI/); assert.deepEqual(await page.evaluate(()=>window.__practice.input.pressed),[]);
   await page.locator('#listen').click();
-  await page.setViewportSize({width:390,height:844}); await page.waitForTimeout(250); await page.screenshot({path:'test-results/mobile.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>{const key=document.querySelector('[data-midi="60"]').getBoundingClientRect();const area=document.querySelector('#keyboard-scroll').getBoundingClientRect();return key.left>=area.left && key.right<=area.right;});
+  await page.screenshot({path:'test-results/mobile.png',fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Keine horizontale Seitenausdehnung');
+  assert.equal(await page.locator('.practice-panel').evaluate(el=>el.getBoundingClientRect().top < document.querySelector('.controls').getBoundingClientRect().top),true,'Noten und Wiedergabe stehen mobil vor den Einstellungen');
+  assert.equal(await page.locator('[data-midi="60"]').evaluate(el=>{const key=el.getBoundingClientRect();const area=document.querySelector('#keyboard-scroll').getBoundingClientRect();return key.left>=area.left && key.right<=area.right;}),true,'Computerbelegung bleibt nach Größenwechsel sichtbar');
+  for (const width of [320,768,1024,1920]) {
+    await page.setViewportSize({width,height:900});await page.waitForTimeout(250);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`Keine horizontale Seitenausdehnung bei ${width} px`);
+    assert.equal(await page.locator('.practice-settings').evaluate(el=>el.scrollWidth<=el.clientWidth),true,`Überegler passen bei ${width} px`);
+  }
   const touchContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const touchPage=await touchContext.newPage();await touchPage.goto('http://127.0.0.1:5173');await touchPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await touchPage.locator('#step').tap();await touchPage.locator('[data-midi="48"]').tap();await touchPage.locator('[data-midi="60"]').tap();assert.equal(await touchPage.evaluate(()=>window.__practice.engine.beat),1);await touchContext.close();
   const storageContext=await browser.newContext({viewport:{width:1360,height:1000}});await storageContext.route('**/piano/*.mp3',async route=>{await new Promise(done=>setTimeout(done,300));await route.continue();});const storagePage=await storageContext.newPage();
   const storageReady=()=>storagePage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy&&window.__practice.progress?.ready);
@@ -92,8 +105,8 @@ try {
   await storagePage.evaluate(()=>window.__practice.progress.flush());await storagePage.reload({waitUntil:'domcontentloaded'});await storageReady();
   assert.equal(await storagePage.evaluate(()=>window.__practice.engine.settings.hand),'right');assert.equal(await storagePage.evaluate(()=>window.__practice.engine.settings.bpm),31);assert.match(await storagePage.locator('#completed-progress').textContent(),/^1 \/ /);assert.equal(await storagePage.locator('#mistakes-progress').textContent(),'0');
   await storagePage.locator('[data-hand="both"]').click();assert.equal(await storagePage.locator('#mistakes-progress').textContent(),'1');assert.match(await storagePage.locator('#completed-progress').textContent(),/^1 \/ /);
-  storagePage.once('dialog',dialog=>dialog.accept());await storagePage.locator('#clear-progress').click();await storagePage.waitForFunction(()=>document.querySelector('#progress-status').textContent.includes('gelöscht'));assert.match(await storagePage.locator('#completed-progress').textContent(),/^0 \/ /);await storageContext.close();
+  storagePage.once('dialog',dialog=>dialog.accept());await storagePage.locator('#progress-settings summary').click(); await storagePage.locator('#clear-progress').click();await storagePage.waitForFunction(()=>document.querySelector('#progress-status').textContent.includes('gelöscht'));assert.match(await storagePage.locator('#completed-progress').textContent(),/^0 \/ /);await storageContext.close();
   const faultContext=await browser.newContext();await faultContext.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{value:{open(){throw new DOMException('Simulierter Speicherfehler','SecurityError');}}});Object.defineProperty(navigator,'requestMIDIAccess',{value:undefined,configurable:true});});
-  const faultPage=await faultContext.newPage();await faultPage.goto('http://127.0.0.1:5173',{waitUntil:'domcontentloaded'});await faultPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await faultPage.locator('#step').click();await faultPage.locator('[data-midi="48"]').click();await faultPage.locator('[data-midi="60"]').click();assert.equal(await faultPage.evaluate(()=>window.__practice.engine.beat),1);assert.match(await faultPage.locator('#progress-status').textContent(),/nicht verfügbar/);await faultPage.locator('#midi-connect').click();assert.match(await faultPage.locator('#midi-status').textContent(),/unterstützt MIDI nicht/);await faultContext.close();
+  const faultPage=await faultContext.newPage();await faultPage.goto('http://127.0.0.1:5173',{waitUntil:'domcontentloaded'});await faultPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await faultPage.locator('#step').click();await faultPage.locator('[data-midi="48"]').click();await faultPage.locator('[data-midi="60"]').click();assert.equal(await faultPage.evaluate(()=>window.__practice.engine.beat),1);assert.match(await faultPage.locator('#progress-status').textContent(),/nicht verfügbar/);await faultPage.locator('#midi-settings summary').click(); await faultPage.locator('#midi-connect').click();assert.match(await faultPage.locator('#midi-status').textContent(),/unterstützt MIDI nicht/);await faultContext.close();
   assert.deepEqual(errors,[],'Keine Laufzeitfehler'); console.log('Browser bestanden: komplettes Beispiel, Cursor, Maus/Tastatur/Touch, Audio (30 Samples und Signal), Pause/Tempo/Loops, XML/MXL/Fehlerfälle, Auftakt/Stimmen/Triolen/Taktwechsel, Handwahl, simuliertes MIDI/Trennen, IndexedDB/Neuladen/Löschen/Speicherfehler, Desktop/Mobil.');
 } finally { await browser.close(); }

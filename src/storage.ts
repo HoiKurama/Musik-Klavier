@@ -50,7 +50,7 @@ export class LocalProgress {
   private status: HTMLElement;
   constructor(host: HTMLElement,private getEngine:()=>PracticeEngine|undefined,private getBusy:()=>boolean,private applySettings:(settings:Settings)=>void) {
     const section=document.createElement('section');section.className='control-section';
-    section.innerHTML=`<h2>Dein Fortschritt</h2><div class="stats"><div><strong id="completed-progress">0 / 0</strong><span>Einsätze geschafft</span></div><div><strong id="mistakes-progress">0</strong><span>Falsche Töne</span></div><div><strong id="time-progress">0:00</strong><span>Übezeit</span></div></div><p id="progress-status" class="hint" role="status">Wird lokal in diesem Browser gespeichert.</p><button id="clear-progress" class="text-button">Fortschritt dieses Stücks löschen</button>`;
+    section.innerHTML=`<details id="progress-settings"><summary>Dein Fortschritt</summary><div class="details-content"><div class="stats"><div><strong id="completed-progress">0 / 0</strong><span>Einsätze geschafft</span></div><div><strong id="mistakes-progress">0</strong><span>Falsche Töne</span></div><div><strong id="time-progress">0:00</strong><span>Übezeit</span></div></div><p id="progress-status" class="hint" role="status">Wird lokal in diesem Browser gespeichert.</p><button id="clear-progress" class="text-button">Fortschritt dieses Stücks löschen</button></div></details>`;
     host.append(section);this.status=section.querySelector('#progress-status')!;
     section.querySelector('#clear-progress')!.addEventListener('click',()=>{
       const engine=this.getEngine();if(!engine||!confirm('Fortschritt für dieses Stück und alle Hände löschen? Die Noten bleiben erhalten.'))return;

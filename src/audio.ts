@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { pianoSamples } from 'virtual:offline-assets';
 import { selected, type Score, type Settings } from './types';
 
 export class PianoAudio {
@@ -22,7 +23,7 @@ export class PianoAudio {
     const names = ['A0', ...Array.from({ length: 7 }, (_, i) => ['C', 'Ds', 'Fs', 'A'].map(n => n + (i + 1))).flat(), 'C8'];
     const context = Tone.getContext().rawContext;
     await Promise.all(names.map(async name => {
-      const response = await fetch(`/piano/${name}.mp3`);
+      const response = await fetch(pianoSamples[name] ?? `${import.meta.env.BASE_URL}piano/${name}.mp3`);
       if (!response.ok) throw new Error('Klaviersamples fehlen. Bitte die lokale Installation prüfen.');
       this.buffers[name.replace('Ds', 'D#').replace('Fs', 'F#')] = await context.decodeAudioData(await response.arrayBuffer());
     }));

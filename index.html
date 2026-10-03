@@ -1,5 +1,23 @@
 <!doctype html>
 <html lang="de">
-  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#18362e"><title>Klavierzeit · Noten üben</title></head>
-  <body><div id="app"></div><script type="module" src="/src/main.ts"></script></body>
+  <head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#18362e">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Klavierzeit · Noten üben</title>
+    <style>.boot{max-width:34rem;margin:15vh auto;padding:0 1.25rem;font:17px/1.5 system-ui,sans-serif;color:#18362e}.boot a{color:inherit;font-weight:700}</style>
+    <script>
+      // Runs only if the app script cannot load, e.g. this file was opened by double-click (file://).
+      // Then switch to the self-contained build in dist/, or explain how to start the app.
+      function klavierzeitFallback() {
+        var probe = new Image();
+        probe.onload = function () { location.replace('dist/index.html'); };
+        probe.onerror = function () { document.getElementById('boot-text').hidden = true; document.getElementById('boot-help').hidden = false; };
+        probe.src = 'dist/favicon.svg';
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app"><div class="boot"><p id="boot-text">Klavierzeit wird geladen …</p><div id="boot-help" hidden><p><strong>Klavierzeit ist noch nicht vorbereitet.</strong></p><p>Bitte im Projektordner <strong>Start.cmd</strong> doppelklicken. Danach lässt sich Klavierzeit auch direkt über diese Datei öffnen.</p></div></div></div>
+    <script type="module" src="/src/main.ts" onerror="klavierzeitFallback()"></script>
+  </body>
 </html>

@@ -44,7 +44,7 @@ export class MidiInput {
 }
 export function installMidiControls(host: HTMLElement, input: NoteInput): MidiInput {
   const section = document.createElement('section'); section.className = 'control-section';
-  section.innerHTML = `<h2>Dein Digitalpiano</h2><button id="midi-connect" class="secondary full-width">Digitalpiano verbinden</button><select id="midi-device" class="full-width" aria-label="MIDI-Eingabegerät" hidden></select><p id="midi-status" class="hint" role="status">Optional: MIDI per USB, wenn dein Browser es unterstützt. Der Zugriff erfolgt erst nach deinem Klick.</p>`;
+  section.innerHTML = `<details id="midi-settings"><summary>Digitalpiano verbinden</summary><div class="details-content"><button id="midi-connect" class="secondary full-width">Digitalpiano verbinden</button><select id="midi-device" class="full-width" aria-label="MIDI-Eingabegerät" hidden></select><p id="midi-status" class="hint" role="status">Optional: MIDI per USB, wenn dein Browser es unterstützt. Der Zugriff erfolgt erst nach deinem Klick.</p></div></details>`;
   host.append(section); const midi = new MidiInput(input);
   const button = section.querySelector<HTMLButtonElement>('#midi-connect')!;
   const select = section.querySelector<HTMLSelectElement>('#midi-device')!;
