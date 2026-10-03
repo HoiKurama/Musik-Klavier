@@ -11,13 +11,19 @@
       function klavierzeitFallback() {
         var probe = new Image();
         probe.onload = function () { location.replace('dist/index.html'); };
-        probe.onerror = function () { document.getElementById('boot-text').hidden = true; document.getElementById('boot-help').hidden = false; };
+        probe.onerror = function () {
+          var web = location.protocol !== 'file:';
+          document.getElementById('boot-text').hidden = true;
+          document.getElementById('boot-local').hidden = web;
+          document.getElementById('boot-web').hidden = !web;
+          document.getElementById('boot-help').hidden = false;
+        };
         probe.src = 'dist/favicon.svg';
       }
     </script>
   </head>
   <body>
-    <div id="app"><div class="boot"><p id="boot-text">Klavierzeit wird geladen …</p><div id="boot-help" hidden><p><strong>Klavierzeit ist noch nicht vorbereitet.</strong></p><p>Bitte im Projektordner <strong>Start.cmd</strong> doppelklicken. Danach lässt sich Klavierzeit auch direkt über diese Datei öffnen.</p></div></div></div>
+    <div id="app"><div class="boot"><p id="boot-text">Klavierzeit wird geladen …</p><div id="boot-help" hidden><p><strong>Klavierzeit ist noch nicht vorbereitet.</strong></p><p id="boot-local">Bitte im Projektordner <strong>Start.cmd</strong> doppelklicken. Danach lässt sich Klavierzeit auch direkt über diese Datei öffnen.</p><p id="boot-web" hidden>Diese Adresse zeigt nur den Quellcode, nicht die fertige App. Für GitHub Pages im Repository unter <strong>Settings → Pages</strong> als Quelle <strong>GitHub Actions</strong> wählen. Lokal <strong>Start.cmd</strong> doppelklicken.</p></div></div></div>
     <script type="module" src="/src/main.ts" onerror="klavierzeitFallback()"></script>
   </body>
 </html>
