@@ -6,13 +6,15 @@
 2026-10-03: Weiße Seite behoben (Doppelklick auf index.html/veraltetes dist). Build ist eine eigenständige `dist/index.html` mit eingebetteten Samples; `index.html` leitet per file:// dorthin weiter; Start.cmd baut bei Bedarf neu. Commit-Sperre (verwaiste `.git/index.lock`) entfernt, Zeilenenden per `.gitattributes` geregelt (Batch-Dateien CRLF). Alle Prüfungen bestanden und committed.
 
 # Important Decisions
-TypeScript/Vite ohne UI-Framework; OSMD für Notenmodell und Darstellung; Tone.js mit lokalen Salamander-Samples. Kein Backend, keine KI-API, keine Veröffentlichung und keine Unteragenten. Takte in notierter Reihenfolge; Schrittmodus bewertet Tonhöhen. Creme-Grün-Gestaltung bleibt; selten benötigte Einstellungen verwenden native details/summary. Mobile Reihenfolge entspricht der DOM-Reihenfolge.
+TypeScript/Vite ohne UI-Framework; OSMD für Notenmodell und Darstellung; Tone.js mit lokalen Salamander-Samples. Kein Backend und keine Unteragenten. 2026-10-04: Nutzer hat sich für optionale Fotoerkennung per Claude (claude-opus-5-5) mit eigenem API-Schlüssel entschieden (statt reiner Anleitung oder lokaler Erkennung); Anfrage direkt aus dem Browser, KI liefert JSON nach Schema, MusicXML entsteht im Code (src/transcription.ts). Website über GitHub Pages (Quelle „GitHub Actions“, Deploy von main). Takte in notierter Reihenfolge; Schrittmodus bewertet Tonhöhen. Creme-Grün-Gestaltung bleibt; selten benötigte Einstellungen verwenden native details/summary. Mobile Reihenfolge entspricht der DOM-Reihenfolge.
 
 # Relevant Facts
 Windows; Node 24.19.0, npm 11.17.0. Start.cmd oder npm.cmd start, Adresse http://127.0.0.1:5173 (nicht localhost: dort läuft auf diesem Rechner teils ein anderes Vite-Projekt). Ohne Server: index.html bzw. dist/index.html doppelklicken. OSMD 1.9.9; 30 lokale Salamander-Samples. Keine Foto-/PDF-Erkennung; Notationswiederholungen/Sprünge/Pedal/Verzierungen werden nicht interpretiert. Handfilter pro Notensystem; Schrittmodus ohne Rhythmusbewertung. Speicherschlüssel: XML-Inhaltshash und Hand. Importierte Stücke zum Wiederaufnehmen erneut öffnen.
 
+2026-10-04: GitHub Pages läuft (https://hoikurama.github.io/Musik-Klavier/), Standard-Branch main; Branch master besteht noch, Löschen dem Nutzer überlassen. Fotoerkennung eingebaut und mit simulierter API geprüft, nicht mit echtem Schlüssel.
+
 # Open Questions
-Keine offenen Produktentscheidungen oder erforderlichen Softwareaufgaben. Nicht geprüft: reales Digitalpiano und subjektives Hören. MIDI wurde simuliert, das Audiosignal technisch geprüft.
+Echte Fotoerkennung mit Nutzerschlüssel noch nicht ausprobiert (Qualität, Kosten); Kostenhinweis 20–80 US-Cent/Seite ist geschätzt. Nicht geprüft: reales Digitalpiano und subjektives Hören. MIDI wurde simuliert, das Audiosignal technisch geprüft.
 
 # Next Steps
 Interface fertig und lokal verfügbar; Nutzer kann es ansehen und konkrete Anpassungen nennen. Optional später MIDI mit realem Digitalpiano und Klang subjektiv prüfen; bei problematischen Scannerexporten gezielt Importtests ergänzen.

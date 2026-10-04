@@ -36,8 +36,11 @@ export function validateXML(xml: string): Document {
   if (!doc.querySelector('part > measure')) throw new Error('Die Datei enthält keine Takte.');
   return doc;
 }
+// Scores created by the photo recognition carry this marker and get auto-beaming plus a reminder.
+export const recognized = (doc: Document) => !!doc.querySelector('miscellaneous-field[name="klavierzeit-erkannt"]');
 export function importWarnings(doc: Document): string[] {
   const warnings: string[] = [];
+  if (recognized(doc)) warnings.push('Diese Noten wurden per KI aus einem Foto erkannt. Vergleiche sie mit der Vorlage – einzelne Töne oder Rhythmen können falsch sein.');
   if (doc.querySelector('repeat, ending, segno, coda, sound[dacapo], sound[dalsegno], sound[tocoda], sound[fine]')) warnings.push('Wiederholungszeichen und Sprünge: Die App spielt die Takte in notierter Reihenfolge. Nutze die Taktwiederholung.');
   if (doc.querySelector('grace, ornament, ornaments, tremolo, arpeggiate')) warnings.push('Verzierungen, Vorschläge, Tremolo und Arpeggien werden angezeigt; abgespielt werden die Haupttöne als normale Einsätze.');
   if (doc.querySelector('pedal, sound[damper-pedal]')) warnings.push('Pedalzeichen werden angezeigt, beim Abspielen aber nicht interpretiert.');

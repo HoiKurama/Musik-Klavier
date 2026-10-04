@@ -1,5 +1,5 @@
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
-import { importWarnings, validateXML } from './import';
+import { importWarnings, recognized, validateXML } from './import';
 import type { Score, ScoreNote, Step } from './types';
 
 export function buildScore(osmd: OpenSheetMusicDisplay, doc: Document, hash: string): Score {
@@ -50,7 +50,7 @@ export class ScoreView {
     element.className = 'score-render';
     element.style.cssText = `position:absolute;left:-20000px;width:${Math.max(320, host.clientWidth - 32)}px;visibility:hidden;`;
     host.append(element);
-    const osmd = new OpenSheetMusicDisplay(element, { backend: 'svg', autoResize: false, drawTitle: false, drawComposer: false, drawPartNames: false, drawMetronomeMarks: true, cursorsOptions: [{ type: 0, color: '#3b9b78', alpha: 0.32, follow: false }] });
+    const osmd = new OpenSheetMusicDisplay(element, { backend: 'svg', autoResize: false, drawTitle: false, drawComposer: false, drawPartNames: false, drawMetronomeMarks: true, autoBeam: recognized(doc), cursorsOptions: [{ type: 0, color: '#3b9b78', alpha: 0.32, follow: false }] });
     try {
       await osmd.load(doc); osmd.render();
       const score = buildScore(osmd, doc, hash);

@@ -8,6 +8,7 @@ import { noteName, type Settings } from './types';
 import { installHandControls } from './hands';
 import { installMidiControls } from './midi';
 import { LocalProgress } from './storage';
+import { installPhotoRecognition, isPicture } from './photo';
 import { exampleScore } from 'virtual:offline-assets';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -30,13 +31,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <section class="keyboard-section"><div class="keyboard-heading"><h2>Deine Klaviertastatur</h2><div class="octave-control"><button id="octave-down" aria-label="Computerbelegung eine Oktave tiefer">−</button><span id="octave-label">C4 – C5</span><button id="octave-up" aria-label="Computerbelegung eine Oktave höher">＋</button></div></div><div class="legend"><span><i class="expected"></i>Gesucht</span><span><i class="sounding"></i>Klingt</span><span><i class="pressed"></i>Gespielt</span></div><div id="keyboard-scroll" class="keyboard-scroll"><div id="keyboard" class="keyboard" aria-label="Virtuelle Klaviertastatur"></div></div><p class="keyboard-help">Klicke oder tippe auf die Tasten. Am Computer: <strong>A W S E D F T G Z H U J K</strong>. Mit − / ＋ wechselst du die Oktave.</p></section>
       </section>
       <aside class="controls" aria-label="Noten und Einstellungen">
-        <section class="control-section"><h2>Deine Noten</h2><label id="dropzone" class="dropzone"><span class="upload-icon" aria-hidden="true">＋</span><strong>MusicXML öffnen</strong><span>Datei wählen oder hier ablegen</span><small>.musicxml · .xml · .mxl</small><input id="file" type="file" accept=".musicxml,.xml,.mxl" aria-label="MusicXML-Datei öffnen"></label><p class="hint">Foto oder PDF? Mit einem Notenscanner als MusicXML exportieren.</p></section>
+        <section id="notes-section" class="control-section"><h2>Deine Noten</h2><label id="dropzone" class="dropzone"><span class="upload-icon" aria-hidden="true">＋</span><strong>Noten öffnen</strong><span>Datei wählen oder hier ablegen</span><small>MusicXML · Foto · PDF</small><input id="file" type="file" multiple accept=".musicxml,.xml,.mxl,image/*,.pdf,application/pdf" aria-label="MusicXML-Datei, Foto oder PDF öffnen"></label></section>
         <section class="control-section"><h2>Taktbereich</h2><label class="switch-label"><input id="loop" type="checkbox">Takte wiederholen</label><div class="measure-select"><label>Von<select id="from" aria-label="Erster Takt"></select></label><span aria-hidden="true">–</span><label>Bis<select id="to" aria-label="Letzter Takt"></select></label></div><p class="hint">Start- und Endtakt gehören dazu.</p></section>
         <section class="control-section"><label class="range-label" for="volume"><span>Lautstärke</span><output id="volume-value">65 %</output></label><input id="volume" type="range" min="0" max="100" value="65"></section>
         <div id="extensions"></div>
       </aside>
     </div>
-    <footer>Alles bleibt auf diesem Computer. <a href="THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Klang &amp; Bibliotheken</a></footer>
+    <footer>Alles bleibt auf diesem Computer – außer Fotos, die du zur KI-Erkennung sendest. <a href="THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">Klang &amp; Bibliotheken</a></footer>
   </main>`;
 
 export const element = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -127,12 +128,12 @@ function fillMeasures(): void {
   }
   element<HTMLSelectElement>('to').value = String(engine.settings.to);
 }
-export async function loadXML(xml: string, generation = ++importGeneration): Promise<void> {
-  if (generation !== importGeneration) return;
+export async function loadXML(xml: string, generation = ++importGeneration): Promise<boolean> {
+  if (generation !== importGeneration) return false;
   busy = true; stopSound(); render(); message('Noten werden geladen …');
   try {
     const nextView = await ScoreView.load(xml, element('score'));
-    if (generation !== importGeneration) { nextView.dispose(); return; }
+    if (generation !== importGeneration) { nextView.dispose(); return false; }
     stopSound(); view?.dispose(); view = nextView; view.mount(element('score'));
     engine = new PracticeEngine(view.score, { bpm: view.score.bpm, hand: 'both', rightStaff: 0, leftStaff: Math.min(1, view.score.staves.length - 1), loop: false, from: 0, to: view.score.measures.length - 1 });
     element('title').textContent = view.score.title;
@@ -144,7 +145,8 @@ export async function loadXML(xml: string, generation = ++importGeneration): Pro
     bindings(); lastRevision = -1; lastVisual = ''; await extensionLoaded();
     message(`${view.score.measures.length} Takte bereit. Wähle „Zuhören“ oder „Schrittmodus“.`);
     focusRange(engine.mode === 'step' ? engine.expected : [input.base, input.base + 12]);
-  } catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Die Noten konnten nicht geladen werden.', true); }
+    return true;
+  } catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Die Noten konnten nicht geladen werden.', true); return false; }
   finally { if (generation === importGeneration) { busy = false; render(); } }
 }
 async function openFile(file?: File): Promise<void> {
@@ -155,13 +157,19 @@ async function openFile(file?: File): Promise<void> {
   catch (error) { if (generation === importGeneration) message(error instanceof Error ? error.message : 'Datei konnte nicht gelesen werden.', true); }
   finally { if (generation === importGeneration) { busy = false; render(); } }
 }
-element<HTMLInputElement>('file').addEventListener('change', event => { const field = event.target as HTMLInputElement; void openFile(field.files?.[0]); field.value = ''; });
+const photo = installPhotoRecognition(element('notes-section'), xml => loadXML(xml), message);
+function openFiles(list?: FileList | null): void {
+  const files = [...(list ?? [])]; if (!files.length) return;
+  const pictures = files.filter(isPicture);
+  if (pictures.length) photo.start(pictures); else void openFile(files[0]);
+}
+element<HTMLInputElement>('file').addEventListener('change', event => { const field = event.target as HTMLInputElement; openFiles(field.files); field.value = ''; });
 async function example(): Promise<void> { const generation = ++importGeneration; busy = true; render(); try { await loadXML(exampleScore, generation); } catch (error) { if (generation === importGeneration) message(String(error), true); } finally { if (generation === importGeneration) { busy = false; render(); } } }
 element('example').addEventListener('click', () => { stopSound(); void example(); });
 const dropzone = element('dropzone');
 dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('dragging'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
-dropzone.addEventListener('drop', event => { event.preventDefault(); dropzone.classList.remove('dragging'); void openFile(event.dataTransfer?.files[0]); });
+dropzone.addEventListener('drop', event => { event.preventDefault(); dropzone.classList.remove('dragging'); openFiles(event.dataTransfer?.files); });
 document.addEventListener('dragover', event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); });
 document.addEventListener('drop', event => { if (event.dataTransfer?.types.includes('Files')) event.preventDefault(); });
 element('listen').addEventListener('click', () => { if (!engine || busy) return; stopSound(); engine.setMode('listen'); extensionChange(); render(); });

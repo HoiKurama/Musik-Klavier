@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { zipSync, strToU8 } from 'fflate';
+const BASE = process.env.KLAVIER_URL ?? 'http://127.0.0.1:5173';
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const context = await browser.newContext({ viewport: { width: 1360, height: 1000 } });
 await context.addInitScript(()=>{
@@ -17,7 +18,7 @@ await mkdir('test-results', { recursive: true });
 const state = () => page.evaluate(() => { const a=window.__practice; const e=a.engine; return { busy:a.busy, beat:e?.beat, expected:e?.expected, finished:e?.finished, collected:[...(e?.collected??[])], measures:e?.score.measures, notes:e?.score.notes, playing:e?.playing, mode:e?.mode, settings:e?.settings, title:e?.score.title }; });
 const ready = async () => { await page.waitForFunction(() => window.__practice?.engine && !window.__practice.busy && (!window.__practice.progress || window.__practice.progress.ready), null, {timeout:60000}); };
 try {
-  await page.goto('http://127.0.0.1:5173',{waitUntil:'domcontentloaded'}); await ready();
+  await page.goto(BASE,{waitUntil:'domcontentloaded'}); await ready();
   let s=await state(); assert.equal(s.measures.length,8); assert.equal(s.notes[0].midi,60,'MusicXML C4 muss MIDI 60 sein');
   assert.equal(s.measures.at(-1).end,32); assert.equal(s.notes.find(n=>n.start===26 && n.midi===60).end,32,'Haltebogen über Taktgrenze');
   assert.equal(await page.evaluate(()=>window.__practice.view.osmd.cursor.Iterator.CurrentSourceTimestamp.RealValue*4),0,'Cursor am ersten Einsatz');
@@ -92,10 +93,10 @@ try {
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`Keine horizontale Seitenausdehnung bei ${width} px`);
     assert.equal(await page.locator('.practice-settings').evaluate(el=>el.scrollWidth<=el.clientWidth),true,`Überegler passen bei ${width} px`);
   }
-  const touchContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const touchPage=await touchContext.newPage();await touchPage.goto('http://127.0.0.1:5173');await touchPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await touchPage.locator('#step').tap();await touchPage.locator('[data-midi="48"]').tap();await touchPage.locator('[data-midi="60"]').tap();assert.equal(await touchPage.evaluate(()=>window.__practice.engine.beat),1);await touchContext.close();
+  const touchContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const touchPage=await touchContext.newPage();await touchPage.goto(BASE);await touchPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await touchPage.locator('#step').tap();await touchPage.locator('[data-midi="48"]').tap();await touchPage.locator('[data-midi="60"]').tap();assert.equal(await touchPage.evaluate(()=>window.__practice.engine.beat),1);await touchContext.close();
   const storageContext=await browser.newContext({viewport:{width:1360,height:1000}});await storageContext.route('**/piano/*.mp3',async route=>{await new Promise(done=>setTimeout(done,300));await route.continue();});const storagePage=await storageContext.newPage();
   const storageReady=()=>storagePage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy&&window.__practice.progress?.ready);
-  await storagePage.goto('http://127.0.0.1:5173',{waitUntil:'domcontentloaded'});await storageReady();
+  await storagePage.goto(BASE,{waitUntil:'domcontentloaded'});await storageReady();
   await storagePage.locator('#play').click();await storagePage.locator('#reset').click();await storagePage.waitForFunction(()=>window.__practice.audio.diagnostics.ready);assert.equal(await storagePage.evaluate(()=>window.__practice.engine.playing),false,'Zurücksetzen verhindert verspäteten Start während des Klangladens');
   await storagePage.locator('#step').click();
   await storagePage.locator('[data-midi="61"]').click();await storagePage.locator('[data-midi="48"]').click();await storagePage.locator('[data-midi="60"]').click();
@@ -107,6 +108,6 @@ try {
   await storagePage.locator('[data-hand="both"]').click();assert.equal(await storagePage.locator('#mistakes-progress').textContent(),'1');assert.match(await storagePage.locator('#completed-progress').textContent(),/^1 \/ /);
   storagePage.once('dialog',dialog=>dialog.accept());await storagePage.locator('#progress-settings summary').click(); await storagePage.locator('#clear-progress').click();await storagePage.waitForFunction(()=>document.querySelector('#progress-status').textContent.includes('gelöscht'));assert.match(await storagePage.locator('#completed-progress').textContent(),/^0 \/ /);await storageContext.close();
   const faultContext=await browser.newContext();await faultContext.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{value:{open(){throw new DOMException('Simulierter Speicherfehler','SecurityError');}}});Object.defineProperty(navigator,'requestMIDIAccess',{value:undefined,configurable:true});});
-  const faultPage=await faultContext.newPage();await faultPage.goto('http://127.0.0.1:5173',{waitUntil:'domcontentloaded'});await faultPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await faultPage.locator('#step').click();await faultPage.locator('[data-midi="48"]').click();await faultPage.locator('[data-midi="60"]').click();assert.equal(await faultPage.evaluate(()=>window.__practice.engine.beat),1);assert.match(await faultPage.locator('#progress-status').textContent(),/nicht verfügbar/);await faultPage.locator('#midi-settings summary').click(); await faultPage.locator('#midi-connect').click();assert.match(await faultPage.locator('#midi-status').textContent(),/unterstützt MIDI nicht/);await faultContext.close();
+  const faultPage=await faultContext.newPage();await faultPage.goto(BASE,{waitUntil:'domcontentloaded'});await faultPage.waitForFunction(()=>window.__practice?.engine&&!window.__practice.busy);await faultPage.locator('#step').click();await faultPage.locator('[data-midi="48"]').click();await faultPage.locator('[data-midi="60"]').click();assert.equal(await faultPage.evaluate(()=>window.__practice.engine.beat),1);assert.match(await faultPage.locator('#progress-status').textContent(),/nicht verfügbar/);await faultPage.locator('#midi-settings summary').click(); await faultPage.locator('#midi-connect').click();assert.match(await faultPage.locator('#midi-status').textContent(),/unterstützt MIDI nicht/);await faultContext.close();
   assert.deepEqual(errors,[],'Keine Laufzeitfehler'); console.log('Browser bestanden: komplettes Beispiel, Cursor, Maus/Tastatur/Touch, Audio (30 Samples und Signal), Pause/Tempo/Loops, XML/MXL/Fehlerfälle, Auftakt/Stimmen/Triolen/Taktwechsel, Handwahl, simuliertes MIDI/Trennen, IndexedDB/Neuladen/Löschen/Speicherfehler, Desktop/Mobil.');
 } finally { await browser.close(); }

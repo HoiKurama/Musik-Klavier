@@ -119,6 +119,20 @@ summary::marker { color: var(--green); }
 .stats div { display: flex; flex-direction: column; gap: 3px; }
 .stats strong { font-family: Georgia, serif; font-size: 23px; font-weight: 500; color: var(--green); font-variant-numeric: tabular-nums; }
 .stats span { font-size: 11px; color: var(--muted); }
+.photo-job { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #edf4e9; }
+#photo-status { margin: 0; font-size: 12px; line-height: 1.5; color: #405c3d; overflow-wrap: anywhere; }
+#photo-status.error { color: #913e31; }
+.photo-job:has(#photo-status.error) { background: #fae8e1; }
+.photo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; }
+.photo-actions button { font-size: 12px; min-height: 36px; padding: 6px 12px; }
+.photo-actions .text-button { margin-top: 0; padding: 6px 0; }
+.photo-actions:not(:has(> :not([hidden]))) { display: none; }
+.download-link { font-size: 12px; font-weight: 650; color: var(--green); }
+.photo-settings { margin-top: 14px; }
+.photo-settings .hint:first-child { margin-top: 0; }
+.photo-settings a { color: inherit; }
+.key-label { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.key-label input { width: 100%; font-size: 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
 .text-button { font-size: 12px; font-weight: 400; color: var(--muted); padding: 8px 0; background: none; border: 0; border-radius: 0; margin-top: 6px; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 16px; color: var(--muted); font-size: 11px; }
 footer a { color: var(--muted); }
